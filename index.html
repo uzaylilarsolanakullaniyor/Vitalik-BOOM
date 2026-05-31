@@ -122,6 +122,10 @@ let graceFrames = 0;
 // Score
 let score = 0, hiScore = 0;
 
+// ETH Price tracker
+let ethPrice = 0;       // starts at $0, gains $1000 per pipe
+let hiEthPrice = 0;     // all-time high price reached
+
 // Flash
 let flashA = 0;
 
@@ -144,6 +148,7 @@ function resetGame() {
   bAngle = 0;
   pipes  = [];
   score  = 0;
+  ethPrice = 0;         // reset price each run
   particles = [];
   flashA = 0;
   graceFrames = 75; // ~1.25s at 60fps — no collision, Vitalik blinks
@@ -226,7 +231,7 @@ function update(dt) {
     if (!p.passed && p.x + PIPE_W < bx - BIRD_R) {
       p.passed = true;
       score++;
-      burst(bx, by);
+      ethPrice += 1000;   // +$1,000 per pipe passed
     }
   });
 
@@ -269,6 +274,7 @@ function die() {
   state  = 'dead';
   flashA = 0.7;
   if (score > hiScore) hiScore = score;
+  if (ethPrice > hiEthPrice) hiEthPrice = ethPrice;
 }
 
 // ---- Draw helpers ----
@@ -482,18 +488,34 @@ function drawParticles() {
   });
 }
 
-// ---- Draw score (during play) ----
+// ---- Draw score + ETH price bar (during play) ----
 function drawScore() {
   if (state !== 'playing') return;
-  const txt = String(score);
-  ctx.font = `bold ${s(30)}px Tahoma`;
-  ctx.textAlign = 'center';
 
-  // Shadow outline
-  ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = s(4);
-  ctx.strokeText(txt, s(VW/2), s(48));
+  // ---- Score (small, top center) ----
+  ctx.font = `bold ${s(22)}px Tahoma`;
+  ctx.textAlign = 'center';
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = s(3);
+  ctx.strokeText(String(score), s(VW/2), s(36));
   ctx.fillStyle = 'white';
-  ctx.fillText(txt, s(VW/2), s(48));
+  ctx.fillText(String(score), s(VW/2), s(36));
+
+  // ---- ETH price pill (top-right) ----
+  const priceStr = '$' + ethPrice.toLocaleString();
+  ctx.font = `bold ${s(13)}px Tahoma`;
+  const pw = ctx.measureText(priceStr).width + s(16);
+  const ph = s(22), px2 = s(VW) - pw - s(6), py2 = s(6);
+
+  // Pill background (dark purple-blue, like ETH brand)
+  ctx.fillStyle = 'rgba(40,30,80,0.88)';
+  roundRect(px2, py2, pw, ph, s(10)); ctx.fill();
+  ctx.strokeStyle = '#8090e0'; ctx.lineWidth = s(1.2);
+  roundRect(px2, py2, pw, ph, s(10)); ctx.stroke();
+
+  // Price text centered in pill
+  ctx.fillStyle = '#d0d8ff';
+  ctx.textAlign = 'center';
+  ctx.fillText(priceStr, px2 + pw/2, py2 + ph * 0.72);
   ctx.textAlign = 'left';
 }
 
@@ -595,7 +617,7 @@ function drawGameOver() {
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const wx = 28, wy = 120, ww = VW - 56, wh = 260;
+  const wx = 24, wy = 90, ww = VW - 48, wh = 330;
   const tbH = drawXPWindow(wx, wy, ww, wh, '⬡  Blockchain Collision!', true);
   const cx  = wx + ww / 2;
 
@@ -618,16 +640,41 @@ function drawGameOver() {
   ctx.beginPath(); ctx.moveTo(s(wx+10), s(wy+tbH+50)); ctx.lineTo(s(wx+ww-10), s(wy+tbH+50)); ctx.stroke();
 
   ctx.textAlign = 'center';
+
+  // Score
   ctx.fillStyle = '#1e1e80';
-  ctx.font = `bold ${s(22)}px Tahoma`;
-  ctx.fillText('Score: ' + score, s(cx), s(wy + tbH + 82));
+  ctx.font = `bold ${s(20)}px Tahoma`;
+  ctx.fillText('Score: ' + score, s(cx), s(wy + tbH + 62));
 
   ctx.fillStyle = '#8a2000';
   ctx.font = `bold ${s(12)}px Tahoma`;
-  ctx.fillText('High Score: ' + hiScore, s(cx), s(wy + tbH + 104));
+  ctx.fillText('High Score: ' + hiScore, s(cx), s(wy + tbH + 80));
+
+  // Divider 1
+  ctx.strokeStyle = '#c0bbb0'; ctx.lineWidth = s(0.8);
+  ctx.beginPath(); ctx.moveTo(s(wx+14), s(wy+tbH+88)); ctx.lineTo(s(wx+ww-14), s(wy+tbH+88)); ctx.stroke();
+
+  // ETH Price Reached label
+  ctx.fillStyle = '#454a75';
+  ctx.font = `bold ${s(13)}px Tahoma`;
+  ctx.fillText('ETH Price Reached', s(cx), s(wy + tbH + 108));
+
+  // Big ETH price number
+  ctx.fillStyle = '#1a1a90';
+  ctx.font = `bold ${s(26)}px Tahoma`;
+  ctx.fillText('$' + ethPrice.toLocaleString(), s(cx), s(wy + tbH + 140));
+
+  // Divider 2
+  ctx.strokeStyle = '#c0bbb0'; ctx.lineWidth = s(0.8);
+  ctx.beginPath(); ctx.moveTo(s(wx+14), s(wy+tbH+150)); ctx.lineTo(s(wx+ww-14), s(wy+tbH+150)); ctx.stroke();
+
+  // All-time high
+  ctx.fillStyle = '#8a5000';
+  ctx.font = `bold ${s(12)}px Tahoma`;
+  ctx.fillText('All-Time High: $' + hiEthPrice.toLocaleString(), s(cx), s(wy + tbH + 168));
 
   // Restart button
-  const bw = s(130), bh = s(28), bx2 = s(cx)-bw/2, by2 = s(wy+tbH+120);
+  const bw = s(130), bh = s(28), bx2 = s(cx)-bw/2, by2 = s(wy+tbH+188);
   const bg = ctx.createLinearGradient(bx2, by2, bx2, by2+bh);
   bg.addColorStop(0, '#e8e8e8'); bg.addColorStop(1, '#b0b0b0');
   ctx.fillStyle = bg;
